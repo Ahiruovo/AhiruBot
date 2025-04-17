@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import express from 'express';
 
 dotenv.config();
 
@@ -173,10 +172,6 @@ fs.readdirSync(eventsPath).forEach(file => {
     });
   }
 });
-
-const app = express();
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(3000, () => console.log('Keep-alive server is running'));
 
 client.login(process.env.DISCORD_TOKEN);
 
