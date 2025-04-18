@@ -62,13 +62,21 @@ client.once('ready', async () => {
   }
   console.log('✅ 歷史訊息快取完成');
 
-  // 機器人啟動時載入 guild 設定
+  // 開機時自動載入每個 guild 的 disabledEvents 設定
   const rows = db.prepare('SELECT guild_id, disabled_events FROM guild_settings').all();
   for (const row of rows) {
     if (row.disabled_events) {
-      client.disabledEvents.set(row.guild_id, new Set(JSON.parse(row.disabled_events)));
+      try {
+        const disabledArr = JSON.parse(row.disabled_events);
+        if (Array.isArray(disabledArr)) {
+          client.disabledEvents.set(row.guild_id, new Set(disabledArr));
+        }
+      } catch (e) {
+        console.error(`解析 disabled_events 失敗 (guild_id: ${row.guild_id}):`, e);
+      }
     }
   }
+  console.log('✅ 已從資料庫載入所有伺服器的事件啟用/停用設定');
 });
 
 // 註冊 /disable 指令
