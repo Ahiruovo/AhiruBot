@@ -35,6 +35,14 @@ client.eventDescriptions = new Map();
 // 初始化資料庫（會自動建立檔案）
 const db = new Database('./data/bot.db');
 
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS guild_settings (
+    guild_id TEXT PRIMARY KEY,
+    guild_name TEXT,
+    disabled_events TEXT
+  )
+`).run();
+
 client.once('ready', async () => {
   console.log(`✅ Bot 上線！登入帳號：${client.user.tag}`);
   // 整合 channalHistory.js 的訊息快取邏輯
@@ -53,6 +61,14 @@ client.once('ready', async () => {
     }
   }
   console.log('✅ 歷史訊息快取完成');
+
+  // 機器人啟動時載入 guild 設定
+  const rows = db.prepare('SELECT guild_id, disabled_events FROM guild_settings').all();
+  for (const row of rows) {
+    if (row.disabled_events) {
+      client.disabledEvents.set(row.guild_id, new Set(JSON.parse(row.disabled_events)));
+    }
+  }
 });
 
 // 註冊 /disable 指令
@@ -83,12 +99,12 @@ console.log('CLIENT_ID:', process.env.CLIENT_ID);
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
-// 清空 guild 指令
-await rest.put(
-  Routes.applicationGuildCommands(process.env.CLIENT_ID, '1292830013271572564'),
-  { body: [] }
-);
-console.log('已清空 guild 指令');
+// // 清空 guild 指令
+// await rest.put(
+//   Routes.applicationGuildCommands(process.env.CLIENT_ID, '1292830013271572564'),
+//   { body: [] }
+// );
+// console.log('已清空 guild 指令');
 
 (async () => {
   try {
@@ -105,6 +121,18 @@ console.log('已清空 guild 指令');
 client.on('interactionCreate', async interaction => {
   try {
     if (!interaction.isChatInputCommand()) return;
+
+    // 寫入或更新 guild 設定
+    db.prepare(`
+      INSERT INTO guild_settings (guild_id, guild_name, disabled_events)
+      VALUES (?, ?, ?)
+      ON CONFLICT(guild_id) DO UPDATE SET guild_name=excluded.guild_name
+    `).run(
+      interaction.guildId,
+      interaction.guild?.name || '未知伺服器',
+      JSON.stringify(Array.from(client.disabledEvents.get(interaction.guildId) || []))
+    );
+
     if (interaction.commandName === 'disable') {
       const eventName = interaction.options.getString('event');
       const guildId = interaction.guildId;
@@ -123,6 +151,13 @@ client.on('interactionCreate', async interaction => {
         }
         await interaction.reply(msg);
       }
+      // 更新資料庫
+      db.prepare(`
+        UPDATE guild_settings SET disabled_events = ? WHERE guild_id = ?
+      `).run(
+        JSON.stringify(Array.from(client.disabledEvents.get(guildId) || [])),
+        guildId
+      );
     } else if (interaction.commandName === 'enable') {
       const eventName = interaction.options.getString('event');
       const guildId = interaction.guildId;
@@ -140,6 +175,13 @@ client.on('interactionCreate', async interaction => {
       } else {
         await interaction.reply(`該事件本來就已啟用：${eventName}`);
       }
+      // 更新資料庫
+      db.prepare(`
+        UPDATE guild_settings SET disabled_events = ? WHERE guild_id = ?
+      `).run(
+        JSON.stringify(Array.from(client.disabledEvents.get(guildId) || [])),
+        guildId
+      );
     } else if (interaction.commandName === 'eventdesc') {
       let descMsg = '**所有事件功能說明：**\n';
       for (const [eventName, desc] of client.eventDescriptions.entries()) {

@@ -17,6 +17,21 @@ const voiceStateUpdate = (client, VC_LOG_CHANNEL_NAME, db) => {
       c => c.name === VC_LOG_CHANNEL_NAME && c.isTextBased()
     );
 
+    // 建立 voice_state_update_logs 資料表（如尚未存在）
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS voice_state_update_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        username TEXT,
+        action TEXT,
+        channel_id TEXT,
+        channel_name TEXT,
+        guild_id TEXT,
+        guild_name TEXT,
+        event_time TEXT
+      )
+    `).run();
+
     // 加入語音
     if (!oldState.channel && newState.channel) {
       const channelMention = `<#${newState.channel.id}>`;
@@ -26,6 +41,21 @@ const voiceStateUpdate = (client, VC_LOG_CHANNEL_NAME, db) => {
         .setAuthor({ name: username, iconURL: userAvatar })
         .setTitle('加入了頻道')
         .setDescription(`${userMention} 加入了 ${channelMention}\n${discordTime}`);
+      // 寫入 log
+      db.prepare(`
+        INSERT INTO voice_state_update_logs (user_id, username, action, channel_id, channel_name, guild_id, guild_name, event_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        user.id,
+        username,
+        'join',
+        newState.channel.id,
+        newState.channel.name,
+        guild.id,
+        guild.name,
+        now.toISOString()
+      );
+      console.log(`[資料寫入] 語音加入：${username} (${user.id}) 於 ${guild.name} 的 ${newState.channel.name}`);
     }
     // 離開語音
     else if (oldState.channel && !newState.channel) {
@@ -36,6 +66,21 @@ const voiceStateUpdate = (client, VC_LOG_CHANNEL_NAME, db) => {
         .setAuthor({ name: username, iconURL: userAvatar })
         .setTitle('離開了頻道')
         .setDescription(`${userMention} 離開了 ${channelMention}\n${discordTime}`);
+      // 寫入 log
+      db.prepare(`
+        INSERT INTO voice_state_update_logs (user_id, username, action, channel_id, channel_name, guild_id, guild_name, event_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        user.id,
+        username,
+        'leave',
+        oldState.channel.id,
+        oldState.channel.name,
+        guild.id,
+        guild.name,
+        now.toISOString()
+      );
+      console.log(`[資料寫入] 語音離開：${username} (${user.id}) 於 ${guild.name} 的 ${oldState.channel.name}`);
     }
     if (logMsg && embed) {
       console.log(logMsg);

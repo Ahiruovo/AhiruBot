@@ -7,6 +7,35 @@ const messageUpdate = (client, LOG_CHANNEL_NAME, db) => {
     if (oldMessage.partial) await oldMessage.fetch();
     if (newMessage.author?.bot) return;
     if (oldMessage.content === newMessage.content) return;
+
+    // 建立 message_update_logs 資料表（如尚未存在）
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS message_update_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        username TEXT,
+        old_content TEXT,
+        new_content TEXT,
+        channel_id TEXT,
+        channel_name TEXT,
+        updated_at TEXT
+      )
+    `).run();
+    // 寫入 log
+    db.prepare(`
+      INSERT INTO message_update_logs (user_id, username, old_content, new_content, channel_id, channel_name, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      newMessage.author?.id || '未知',
+      newMessage.author?.username || '未知',
+      oldMessage.content || '（無法取得）',
+      newMessage.content || '（無法取得）',
+      newMessage.channel?.id || '未知',
+      newMessage.channel?.name || '未知',
+      new Date().toISOString()
+    );
+    console.log(`[資料寫入] 編輯訊息：${oldMessage.content || '（無）'} -> ${newMessage.content || '（無）'} by ${newMessage.author?.username || '未知用戶'}`);
+
     const logChannel = newMessage.guild?.channels.cache.find(
       c => c.name === LOG_CHANNEL_NAME && c.isTextBased()
     );
@@ -26,10 +55,7 @@ const messageUpdate = (client, LOG_CHANNEL_NAME, db) => {
         })
         .setTitle('編輯了訊息')
         .setDescription(
-          `${authorMention} 編輯了訊息於 ${channelMention}
-原內容：${oldMessage.content || '（無法取得，可能因未快取）'}
-新內容：${newMessage.content || '（無法取得，可能因未快取）'}
-${discordTime}`
+          `${authorMention} 編輯了訊息於 ${channelMention}\n原內容：${oldMessage.content || '（無法取得，可能因未快取）'}\n新內容：${newMessage.content || '（無法取得，可能因未快取）'}\n${discordTime}`
         );
       logChannel.send({ embeds: [embed] }).catch(console.error);
     }

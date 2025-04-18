@@ -3,6 +3,30 @@ import { EmbedBuilder, MessageFlags } from 'discord.js';
 const guildMemberRemove = (client, LOG_CHANNEL_NAME, db) => {
   client.on('guildMemberRemove', (member) => {
     if (client.disabledEvents.get(member.guild?.id)?.has('guildMemberRemove')) return;
+    // 建立 guild_member_remove_logs 資料表（如尚未存在）
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS guild_member_remove_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        username TEXT,
+        guild_id TEXT,
+        guild_name TEXT,
+        left_at TEXT
+      )
+    `).run();
+    // 寫入 log
+    db.prepare(`
+      INSERT INTO guild_member_remove_logs (user_id, username, guild_id, guild_name, left_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      member.user?.id || '未知',
+      member.user?.username || '未知',
+      member.guild?.id || '未知',
+      member.guild?.name || '未知',
+      new Date().toISOString()
+    );
+    console.log(`[資料寫入] 成員退出：${member.user?.username || '未知用戶'} (${member.user?.id || '未知'}) from ${member.guild?.name || '未知伺服器'}`);
+
     const logChannel = member.guild.channels.cache.find(
       c => c.name === LOG_CHANNEL_NAME && c.isTextBased()
     );

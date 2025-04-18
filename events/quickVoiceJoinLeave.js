@@ -17,6 +17,21 @@ const quickVoiceJoinLeave = (client, VC_LOG_CHANNEL_NAME, db) => {
       c => c.name === VC_LOG_CHANNEL_NAME && c.isTextBased()
     );
 
+    // 建立 quick_voice_join_leave_logs 資料表（如尚未存在）
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS quick_voice_join_leave_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        username TEXT,
+        guild_id TEXT,
+        guild_name TEXT,
+        channel_id TEXT,
+        channel_name TEXT,
+        duration REAL,
+        event_time TEXT
+      )
+    `).run();
+
     // 加入語音時記錄時間
     if (!oldState.channel && newState.channel) {
       quickJoinLeaveMap.set(user.id, Date.now());
@@ -34,6 +49,21 @@ const quickVoiceJoinLeave = (client, VC_LOG_CHANNEL_NAME, db) => {
         if (vcLogChannel && vcLogChannel.isTextBased()) {
           vcLogChannel.send({ embeds: [quickEmbed] }).catch(console.error);
         }
+        // 寫入 log
+        db.prepare(`
+          INSERT INTO quick_voice_join_leave_logs (user_id, username, guild_id, guild_name, channel_id, channel_name, duration, event_time)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          user.id,
+          username,
+          guild.id,
+          guild.name,
+          oldState.channel.id,
+          oldState.channel.name,
+          duration,
+          now.toISOString()
+        );
+        console.log(`[資料寫入] 快速進出語音：${username} (${user.id}) 於 ${guild.name} 的 ${oldState.channel.name}，停留 ${duration} 秒`);
         quickJoinLeaveMap.delete(user.id);
       } else {
         quickJoinLeaveMap.delete(user.id);
