@@ -4,8 +4,6 @@ const messageDelete = (client, LOG_CHANNEL_NAME, db) => {
   client.on('messageDelete', (message) => {
     if (client.disabledEvents.get(message.guild?.id)?.has('messageDelete')) return;
 
-    // 判斷是否為 log 頻道
-    const isLogChannel = message.channel?.name === LOG_CHANNEL_NAME;
     // 判斷是否為機器人自己發的訊息
     const isBotMessage = message.author?.id === client.user.id;
 
@@ -21,8 +19,8 @@ const messageDelete = (client, LOG_CHANNEL_NAME, db) => {
     );
     console.log(`[資料寫入] 刪除訊息：${message.content || '（無法取得內容）'} by ${message.author?.username || '未知用戶'}`);
 
-    // 如果是 log 頻道且是 bot 自己的訊息，不要再發 embed
-    if (isLogChannel && isBotMessage) return;
+    // 如果是機器人自己發的訊息，不要再發 embed
+    if (isBotMessage) return;
 
     // 其餘情況才發 embed
     const now = new Date();
