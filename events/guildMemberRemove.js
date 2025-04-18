@@ -1,6 +1,6 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
 
-const guildMemberRemove = (client, LOG_CHANNEL_NAME) => {
+const guildMemberRemove = (client, LOG_CHANNEL_NAME, db) => {
   client.on('guildMemberRemove', (member) => {
     if (client.disabledEvents.get(member.guild?.id)?.has('guildMemberRemove')) return;
     const logChannel = member.guild.channels.cache.find(

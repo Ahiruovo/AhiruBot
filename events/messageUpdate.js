@@ -1,6 +1,6 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
 
-const messageUpdate = (client, LOG_CHANNEL_NAME) => {
+const messageUpdate = (client, LOG_CHANNEL_NAME, db) => {
   client.on('messageUpdate', async (oldMessage, newMessage) => {
     if (client.disabledEvents.get(newMessage.guild?.id)?.has('messageUpdate')) return;
     if (newMessage.partial) await newMessage.fetch();

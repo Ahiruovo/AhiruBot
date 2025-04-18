@@ -1,6 +1,6 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
 
-const voiceStateUpdate = (client, VC_LOG_CHANNEL_NAME) => {
+const voiceStateUpdate = (client, VC_LOG_CHANNEL_NAME, db) => {
   client.on('voiceStateUpdate', (oldState, newState) => {
     if (client.disabledEvents.get((newState.guild || oldState.guild)?.id)?.has('voiceStateUpdate')) return;
     let logMsg = '';

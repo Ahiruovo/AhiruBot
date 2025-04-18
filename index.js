@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
+import Database from 'better-sqlite3';
 
 dotenv.config();
 
@@ -30,6 +31,9 @@ const VC_LOG_CHANNEL_NAME = 'vclog';
 // 新增：全域禁用事件 Map
 client.disabledEvents = new Map(); // key: guildId, value: Set of event names
 client.eventDescriptions = new Map();
+
+// 初始化資料庫（會自動建立檔案）
+const db = new Database('./data/bot.db');
 
 client.once('ready', async () => {
   console.log(`✅ Bot 上線！登入帳號：${client.user.tag}`);
@@ -158,11 +162,11 @@ fs.readdirSync(eventsPath).forEach(file => {
       const event = eventModule.default || eventModule;
       if (typeof event === 'function') {
         if (file === 'voiceStateUpdate.js') {
-          event(client, VC_LOG_CHANNEL_NAME);
+          event(client, VC_LOG_CHANNEL_NAME, db);
         } else if (file === 'quickVoiceJoinLeave.js') {
-          event(client, VC_LOG_CHANNEL_NAME);
+          event(client, VC_LOG_CHANNEL_NAME, db);
         } else {
-          event(client, LOG_CHANNEL_NAME);
+          event(client, LOG_CHANNEL_NAME, db);
         }
       }
       // 收集 description
@@ -173,5 +177,17 @@ fs.readdirSync(eventsPath).forEach(file => {
   }
 });
 
+client.on('guildMemberAdd', member => {
+  db.prepare('INSERT OR IGNORE INTO users (id, username, joined_at) VALUES (?, ?, ?)').run(
+    member.id,
+    member.user.username,
+    new Date().toISOString()
+  );
+});
+
 client.login(process.env.DISCORD_TOKEN);
+
+// 載入事件
+import messageDelete from './events/messageDelete.js';
+messageDelete(client, LOG_CHANNEL_NAME, db);
 

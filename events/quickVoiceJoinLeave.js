@@ -3,7 +3,7 @@ import { EmbedBuilder, MessageFlags } from 'discord.js';
 // 用於記錄用戶加入語音的時間
 const quickJoinLeaveMap = new Map();
 
-const quickVoiceJoinLeave = (client, VC_LOG_CHANNEL_NAME) => {
+const quickVoiceJoinLeave = (client, VC_LOG_CHANNEL_NAME, db) => {
   client.on('voiceStateUpdate', (oldState, newState) => {
     if (client.disabledEvents.get((newState.guild || oldState.guild)?.id)?.has('quickVoiceJoinLeave')) return;
     const user = (newState.member || oldState.member).user;
