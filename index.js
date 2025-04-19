@@ -43,6 +43,14 @@ db.prepare(`
   )
 `).run();
 
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    joined_at TEXT
+  )
+`).run();
+
 client.once('ready', async () => {
   console.log(`✅ Bot 上線！登入帳號：${client.user.tag}`);
   // 整合 channalHistory.js 的訊息快取邏輯
