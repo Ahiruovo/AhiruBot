@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import Database from 'better-sqlite3';
+import music from './events/music.js';
 
 dotenv.config();
 
@@ -110,6 +111,10 @@ const commands = [
     .setDescription('顯示所有事件的功能說明')
 ].map(cmd => cmd.toJSON());
 
+// 添加音樂指令
+const musicCommand = music(client);
+commands.push(musicCommand.data.toJSON());
+
 console.log('CLIENT_ID:', process.env.CLIENT_ID);
 // console.log('GUILD_ID:', process.env.GUILD_ID);
 
@@ -204,6 +209,9 @@ client.on('interactionCreate', async interaction => {
         descMsg += `\n- \`${eventName}\`：${desc}`;
       }
       await interaction.reply({ content: descMsg, flags: MessageFlags.Ephemeral });
+    } else if (interaction.commandName === 'play') {
+      const musicCommand = music(client);
+      await musicCommand.execute(interaction);
     }
   } catch (err) {
     console.error('interactionCreate error:', err);
@@ -223,6 +231,8 @@ fs.readdirSync(eventsPath).forEach(file => {
           event(client, VC_LOG_CHANNEL_NAME, db);
         } else if (file === 'quickVoiceJoinLeave.js') {
           event(client, VC_LOG_CHANNEL_NAME, db);
+        } else if (file === 'music.js') {
+          // 音樂指令已經在開頭註冊，不需要重複註冊
         } else {
           event(client, LOG_CHANNEL_NAME, db);
         }
@@ -235,17 +245,5 @@ fs.readdirSync(eventsPath).forEach(file => {
   }
 });
 
-client.on('guildMemberAdd', member => {
-  db.prepare('INSERT OR IGNORE INTO users (id, username, joined_at) VALUES (?, ?, ?)').run(
-    member.id,
-    member.user.username,
-    new Date().toISOString()
-  );
-});
-
+// 登入機器人
 client.login(process.env.DISCORD_TOKEN);
-
-// 載入事件
-import messageDelete from './events/messageDelete.js';
-messageDelete(client, LOG_CHANNEL_NAME, db);
-
