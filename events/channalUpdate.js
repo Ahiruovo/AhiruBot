@@ -20,7 +20,7 @@ const channalUpdate = (client, LOG_CHANNEL_NAME) => {
       .setColor(0x2ecc71)
       .setTitle('頻道已新增')
       .setDescription(`新增了${typeText}：\n${channelMention}\n${discordTime}`);
-    logChannel.seSnd({ embeds: [embed] }).catch(console.error);
+    logChannel.send({ embeds: [embed] }).catch(console.error);
   });
 
   // 監聽頻道刪除
