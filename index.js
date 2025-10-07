@@ -4,7 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import Database from 'better-sqlite3';
+
 import music from './events/music.js';
+import * as nicknameCommand from './events/nickname.js';
 
 dotenv.config();
 
@@ -89,6 +91,7 @@ client.once('ready', async () => {
 });
 
 // 註冊 /disable 指令
+
 const commands = [
   new SlashCommandBuilder()
     .setName('disable')
@@ -115,6 +118,10 @@ const commands = [
 const musicCommand = music(client);
 commands.push(musicCommand.data.toJSON());
 
+
+// 將 nickname 指令加入全域註冊
+commands.push(nicknameCommand.data.toJSON());
+
 console.log('CLIENT_ID:', process.env.CLIENT_ID);
 // console.log('GUILD_ID:', process.env.GUILD_ID);
 
@@ -127,13 +134,16 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 // );
 // console.log('已清空 guild 指令');
 
+
+
 (async () => {
   try {
+    // 全域註冊（包含 nickname 指令）
     await rest.put(
       Routes.applicationCommands(process.env.CLIENT_ID),
       { body: commands }
     );
-    console.log('✅ 已註冊 /disable 指令（全域）');
+    console.log('✅ 已註冊所有 Slash 指令（全域）');
   } catch (error) {
     console.error(error);
   }
@@ -212,6 +222,8 @@ client.on('interactionCreate', async interaction => {
     } else if (interaction.commandName === 'play') {
       const musicCommand = music(client);
       await musicCommand.execute(interaction);
+    } else if (interaction.commandName === 'nickname') {
+      await nicknameCommand.execute(interaction);
     }
   } catch (err) {
     console.error('interactionCreate error:', err);
